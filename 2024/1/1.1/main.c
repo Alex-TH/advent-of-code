@@ -50,6 +50,7 @@ int parse_input(int list_a[ARRAY_SIZE], int list_b[ARRAY_SIZE]) {
   while (fscanf(fd, "%d %d\n", &value_a, &value_b) != EOF) {
     if (index == ARRAY_SIZE) {
       printf("We have more data than expected\n");
+      fclose(fd);
       return -1;
     }
 
@@ -58,6 +59,7 @@ int parse_input(int list_a[ARRAY_SIZE], int list_b[ARRAY_SIZE]) {
     index++;
   }
 
+  fclose(fd);
   return 0;
 }
 
