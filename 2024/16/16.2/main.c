@@ -209,6 +209,8 @@ void dijkstra(char map[MAP_HEIGHT][MAP_WIDTH], Position start) {
 
   printf("founded cost %d\n", costs[1][MAP_WIDTH - 2]);
   printf("Tiles count %d\n", tile_count);
+
+  free(queue.values);
 }
 
 int main() {
