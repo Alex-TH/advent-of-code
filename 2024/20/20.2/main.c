@@ -128,15 +128,15 @@ int is_in_bounds(Position pos) {
   return pos.x >= 0 && pos.y >= 0 && pos.x < WIDTH && pos.y < HEIGHT;
 }
 
+Position deltas[4] = {
+  { .x = 0, .y = -1 },
+  { .x = 1, .y = 0 },
+  { .x = 0, .y = 1 },
+  { .x = -1, .y = 0 },
+};
 void dijkstra(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], Position start, Position end) {
   PriorityQueue queue = initialize_queue();
   PriorityValue initial = { .coords = start, .priority = 0 };
-  Position deltas[4] = {
-    { .x = 0, .y = -1 },
-    { .x = 1, .y = 0 },
-    { .x = 0, .y = 1 },
-    { .x = -1, .y = 0 },
-  };
 
   insert_queue(&queue, initial);
   costs[start.y][start.x] = 0;
@@ -166,6 +166,56 @@ void dijkstra(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], Positi
   free(queue.values);
 }
 
+typedef struct CheatProgress {
+  Position pos;
+  short progress;
+} CheatProgress;
+
+// do a mini dijkstra
+int apply_n_cheat(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], int n, Position pos) {
+  PriorityQueue queue = initialize_queue();
+  PriorityValue initial = { .coords = pos, .priority = 0 };
+  unsigned short cheat_costs[HEIGHT][WIDTH];
+  int result = 0;
+
+  memset(cheat_costs, -1, sizeof(cheat_costs));
+  insert_queue(&queue, initial);
+
+  while (queue.len > 0) {
+    if (queue.len > 500) printf("queue len -> %d\n", queue.len);
+    PriorityValue current = dequeue(&queue);
+
+    /* if (visited[current.coords.y][current.coords.x]) continue; */
+    /* visited[current.pos.y][current.pos.x] = 1; */
+
+    if (current.priority == n) {
+      // add pos to result
+      if (map[current.coords.y][current.coords.x] != WALL) {
+        int saving_found = costs[pos.y][pos.x] - costs[current.coords.y][current.coords.x] - n;
+        printf("Found cost saving of %d from {%d, %d} to {%d, %d}\n", saving_found, pos.x, pos.y, current.coords.x, current.coords.y);
+        if (saving_found >= 100) result++;
+      }
+      continue;
+    }
+
+    int next_priority = current.priority + 1;
+    for (int i = 0; i < 4; i++) {
+      Position next_pos = { .x = current.coords.x + deltas[i].x, .y = current.coords.y + deltas[i].y };
+      if (is_in_bounds(next_pos) && cheat_costs[next_pos.y][next_pos.x] > next_priority) {
+        PriorityValue next;
+        next.coords = next_pos;
+        next.priority = next_priority;
+        insert_queue(&queue, next);
+        cheat_costs[next_pos.y][next_pos.x] = next_priority;
+      }
+    }
+  }
+
+  free(queue.values);
+  return result;
+}
+
+
 int apply_cheats(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], Position start, Position end) {
   for (int y = 0; y < HEIGHT; y++) {
     for (int x = 0; x < WIDTH; x++) {
@@ -175,19 +225,10 @@ int apply_cheats(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], Pos
     printf("\n");
   }
 
-  // from the costs get the number of cheats, group them?
-  // start from end position and try to aply a cheat on each direction
-  // if landing 
   short visited[HEIGHT][WIDTH] = {{ 0 }};
   Position stack[MAX_STACK_LEN];
   int stack_len = 1;
   int result = 0;
-  Position deltas[4] = {
-    { .x = 0, .y = -1 },
-    { .x = 1, .y = 0 },
-    { .x = 0, .y = 1 },
-    { .x = -1, .y = 0 },
-  };
 
   stack[0] = end;
 
@@ -199,21 +240,28 @@ int apply_cheats(char map[HEIGHT][WIDTH], unsigned int costs[HEIGHT][WIDTH], Pos
     }
     visited[current.y][current.x] = 1;
 
-    // process
+    /* int i = 6; */
+    for (int i = 2; i <= 20; i++) {
+      printf("trying n -> %d\n", i);
+      int found = apply_n_cheat(map, costs, i, current);
+      result += found;
+    }
+
+    // get next
     for (int i = 0; i < 4; i++) {
       Position next = { .x = current.x + deltas[i].x, .y = current.y + deltas[i].y };
       if (!is_in_bounds(next)) continue;
 
       // apply cheat
-      Position next_after = { .x = next.x + deltas[i].x, .y = next.y + deltas[i].y };
-      if (map[next.y][next.x] == WALL && !visited[next.y][next.x] && is_in_bounds(next_after) && map[next_after.y][next_after.x] != WALL) {
-        visited[next.y][next.x] = 1;
-        int saving_found = (costs[current.y][current.x] - costs[next_after.y][next_after.x] - 2);
-        printf("found cost saving of %d - %d - 2 = %d\n", costs[current.y][current.x], costs[next_after.y][next_after.x], saving_found);
-        if (saving_found >= 100) {
-          result++;
-        }
-      }
+      /* Position next_after = { .x = next.x + deltas[i].x, .y = next.y + deltas[i].y }; */
+      /* if (map[next.y][next.x] == WALL && !visited[next.y][next.x] && is_in_bounds(next_after) && map[next_after.y][next_after.x] != WALL) { */
+      /*   visited[next.y][next.x] = 1; */
+      /*   int saving_found = (costs[current.y][current.x] - costs[next_after.y][next_after.x] - 2); */
+      /*   printf("found cost saving of %d - %d - 2 = %d\n", costs[current.y][current.x], costs[next_after.y][next_after.x], saving_found); */
+      /*   if (saving_found >= 100) { */
+      /*     result++; */
+      /*   } */
+      /* } */
 
       if (map[next.y][next.x] != WALL) {
         stack[stack_len++] = next;
