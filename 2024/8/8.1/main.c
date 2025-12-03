@@ -40,7 +40,7 @@ void append(ArrayList **array_list, Anthena value) {
   unsigned int next_len = len + 1;
   Anthena *values = (*array_list)->values;
 
-  if (next_len == len) {
+  if (next_len == (*array_list)->capacity) {
     (*array_list)->capacity *= 2;
     unsigned int capacity = (*array_list)->capacity;
     (*array_list)->values = realloc(values, sizeof(Anthena) * capacity);
