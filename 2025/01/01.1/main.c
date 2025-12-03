@@ -38,5 +38,6 @@ int main () {
   }
 
   printf("solution: %d\n", solution);
+  fclose(fd);
   return 0;
 }
